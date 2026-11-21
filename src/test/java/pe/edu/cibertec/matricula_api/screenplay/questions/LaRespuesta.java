@@ -20,5 +20,13 @@ public class LaRespuesta {
         return Question.about("la cantidad de elementos")
                 .answeredBy(actor -> SerenityRest.lastResponse().jsonPath().getList("$").size());
     }
+    public static Question<Long> idMatricula() {
+        return Question.about("el id de la matrícula")
+                .answeredBy(actor ->
+                        SerenityRest.lastResponse()
+                                .jsonPath()
+                                .getLong("id")
+                );
+    }
 
 }

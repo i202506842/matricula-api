@@ -1,28 +1,38 @@
-Feature: : Matricula de cursos
-  Como alumno de CIBERTEC
-  Quiero matricularme en mis cursos
-  Para llevarlos en el ciclo
+# language: es
 
-  Scenario: Matricula valida con descuento por promedio y anulacion
-    Given  que Ana consulta la API de matricula
-    When se matricula con el codigo "i202610001" en el curso "PS3511"
-    Then el codigo de respuesta es 201
-    And el monto de la matricula es 288,0
-    And el estado de la matricula es "REGISTRADA"
-    When anula es matricula
-    Then el codigo de respuesta es 200
-    And el estado de la matricula es "ANULADA"
+Característica: Gestión del proceso académico de Luis Ramos
+  Como estudiante de CIBERTEC
+  Necesito consultar el costo de mis cursos y formalizar mi matrícula
+  Para completar correctamente mi inscripción del periodo académico
 
-  Scenario Outline: Matricula rechazada por <motivo>
-    Given  que Ana consulta la API de matricula
-    When se matricula por codigo "<alumno>" en el curso "<curso>"
-    Then el codigo de respuesta es <status>
-    And el codigo de error es "<codigo>"
-    Examples:
-      | motivo             | alumno     | curso  | status | codigo               |
-      | deuda              | i202610004 | PS5511 | 422    | ALUMNO_CON_DEUDA     |
-      | duplicada          | i202610003 | IA5513 | 409    | MATRICULA_DUPLICADA  |
-      | falta de vacantes  | i202610001 | IA5513 | 409    | SIN_VACANTES         |
-      | cruce de horario   | i202610002 | QA5517 | 409    | CRUCE_HORARIO        |
-      | límite de créditos | i202610005 | TS5514 | 422    | LIMITE_CREDITOS      |
-      | alumno inexistente | i999999999 | PS5511 | 404    | ALUMNO_NO_ENCONTRADO |
+  Antecedentes:
+    Dado que Luis consulta la API de matricula
+    Cuando inicia sesión con el usuario "i202610002" y clave "Cibertec2026"
+
+  Escenario: Consultar el importe final del curso asignado
+    Cuando cotiza el curso "DM5512" para el alumno "i202610002"
+    Entonces el codigo de respuesta es 200
+    Y la cotizacion contiene 4 creditos, subtotal "480.0", descuento 10 y total "432.0"
+    Y la respuesta cumple el esquema "cotizacion.json"
+
+  Escenario: Completar la inscripción y confirmar el pago por transferencia
+    Cuando cotiza el curso "DM5512" para el alumno "i202610002"
+    Entonces el codigo de respuesta es 200
+    Y la cotizacion contiene 4 creditos, subtotal "480.0", descuento 10 y total "432.0"
+    Y la respuesta cumple el esquema "cotizacion.json"
+
+    Cuando se matricula en el curso "DM5512" para el alumno "i202610002"
+    Entonces la matricula queda registrada con estado "REGISTRADA" y conserva el monto cotizado
+    Y la respuesta cumple el esquema "matricula.json"
+
+    Cuando paga la matricula mediante "TRANSFERENCIA"
+    Entonces la matricula queda pagada con estado "PAGADA" y fecha de pago registrada
+
+    Cuando consulta los pagos del alumno "i202610002" con metodo "TRANSFERENCIA"
+    Entonces el pago de la matricula aparece con metodo "TRANSFERENCIA" y operacion valida
+
+  Escenario: Detectar un segundo intento de inscripción en un curso ya registrado
+    Cuando intenta matricularse en el curso "PS5511" para el alumno "i202610002"
+    Entonces el codigo de respuesta es 409
+    Y el codigo de error es "MATRICULA_DUPLICADA"
+    Y la respuesta cumple el esquema "error.json"
