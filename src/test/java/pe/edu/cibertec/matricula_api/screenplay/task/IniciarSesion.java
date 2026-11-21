@@ -1,4 +1,3 @@
-
 package pe.edu.cibertec.matricula_api.screenplay.task;
 
 import io.restassured.http.ContentType;
@@ -40,16 +39,27 @@ public class IniciarSesion implements Task {
                         )
         );
 
-        String token = SerenityRest.lastResponse()
+        String accessToken = SerenityRest.lastResponse()
                 .jsonPath()
                 .getString("accessToken");
 
-        if (token == null || token.isBlank()) {
+        String refreshToken = SerenityRest.lastResponse()
+                .jsonPath()
+                .getString("refreshToken");
+
+        if (accessToken == null || accessToken.isBlank()) {
             throw new IllegalStateException(
                     "No se pudo obtener el accessToken"
             );
         }
 
-        actor.remember("accessToken", token);
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new IllegalStateException(
+                    "No se pudo obtener el refreshToken"
+            );
+        }
+
+        actor.remember("accessToken", accessToken);
+        actor.remember("refreshToken", refreshToken);
     }
 }

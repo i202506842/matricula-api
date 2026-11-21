@@ -6,6 +6,6 @@ import org.junit.platform.suite.api.Suite;
 
 @Suite
 @IncludeEngines("cucumber")
-@SelectClasspathResource("features/matricula.feature")
+@SelectClasspathResource("features")
 public class CucumberTestSuite {
 }
