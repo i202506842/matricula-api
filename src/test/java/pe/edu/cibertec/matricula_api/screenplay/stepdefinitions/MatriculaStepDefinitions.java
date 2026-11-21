@@ -1,8 +1,8 @@
-
 package pe.edu.cibertec.matricula_api.screenplay.stepdefinitions;
 
 import io.cucumber.java.en.When;
 import io.cucumber.java.en.Then;
+
 import net.serenitybdd.rest.SerenityRest;
 import net.serenitybdd.screenplay.Actor;
 
@@ -20,7 +20,6 @@ import static net.serenitybdd.screenplay.GivenWhenThen.seeThat;
 import static net.serenitybdd.screenplay.actors.OnStage.theActorInTheSpotlight;
 import static net.serenitybdd.screenplay.rest.questions.ResponseConsequence.seeThatResponse;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.notNullValue;
 
 public class MatriculaStepDefinitions {
@@ -55,20 +54,27 @@ public class MatriculaStepDefinitions {
         double subtotalEsperado = Double.parseDouble(subtotalTexto);
         double totalEsperado = Double.parseDouble(totalTexto);
 
+        String subtotalTextoObtenido = SerenityRest.lastResponse()
+                .jsonPath()
+                .getString("subtotal");
+
+        String totalTextoObtenido = SerenityRest.lastResponse()
+                .jsonPath()
+                .getString("total");
+
+        if (subtotalTextoObtenido == null || totalTextoObtenido == null) {
+            throw new AssertionError(
+                    "La respuesta no contiene subtotal o total.\n"
+                            + SerenityRest.lastResponse().asString()
+            );
+        }
+
         double subtotalObtenido = Double.parseDouble(
-                SerenityRest.lastResponse()
-                        .jsonPath()
-                        .getString("subtotal")
-                        .replace("F", "")
-                        .replace("f", "")
+                subtotalTextoObtenido.replace("F", "").replace("f", "")
         );
 
         double totalObtenido = Double.parseDouble(
-                SerenityRest.lastResponse()
-                        .jsonPath()
-                        .getString("total")
-                        .replace("F", "")
-                        .replace("f", "")
+                totalTextoObtenido.replace("F", "").replace("f", "")
         );
 
         int creditosObtenidos = SerenityRest.lastResponse()
@@ -79,54 +85,72 @@ public class MatriculaStepDefinitions {
                 .jsonPath()
                 .getInt("descuento");
 
-        theActorInTheSpotlight().remember("montoCotizado", totalObtenido);
+        theActorInTheSpotlight().remember(
+                "montoCotizado",
+                totalObtenido
+        );
 
         if (creditosObtenidos != creditos) {
             throw new AssertionError(
-                    "Créditos incorrectos. Esperados: " + creditos +
-                            ", obtenidos: " + creditosObtenidos);
+                    "Créditos incorrectos. Esperados: " + creditos
+                            + ", obtenidos: " + creditosObtenidos
+            );
         }
 
         if (Math.abs(subtotalObtenido - subtotalEsperado) > 0.001) {
             throw new AssertionError(
-                    "Subtotal incorrecto. Esperado: " + subtotalEsperado +
-                            ", obtenido: " + subtotalObtenido);
+                    "Subtotal incorrecto. Esperado: " + subtotalEsperado
+                            + ", obtenido: " + subtotalObtenido
+            );
         }
 
         if (descuentoObtenido != descuento) {
             throw new AssertionError(
-                    "Descuento incorrecto. Esperado: " + descuento +
-                            ", obtenido: " + descuentoObtenido);
+                    "Descuento incorrecto. Esperado: " + descuento
+                            + ", obtenido: " + descuentoObtenido
+            );
         }
 
         if (Math.abs(totalObtenido - totalEsperado) > 0.001) {
             throw new AssertionError(
-                    "Total incorrecto. Esperado: " + totalEsperado +
-                            ", obtenido: " + totalObtenido);
+                    "Total incorrecto. Esperado: " + totalEsperado
+                            + ", obtenido: " + totalObtenido
+            );
         }
     }
-
 
     @When("se matricula en el curso {string} para el alumno {string}")
     public void seMatricula(String curso, String alumno) {
 
         Actor actor = theActorInTheSpotlight();
 
-        actor.attemptsTo(Matricularse.en(alumno, curso));
-
-        actor.should(
-                seeThat(LaRespuesta.codigoDeEstado(), equalTo(201))
+        actor.attemptsTo(
+                Matricularse.en(alumno, curso)
         );
 
+        int codigoObtenido = SerenityRest.lastResponse().statusCode();
+
+        if (codigoObtenido != 201) {
+            throw new AssertionError(
+                    "La matrícula no se registró correctamente.\n"
+                            + "Código HTTP esperado: 201\n"
+                            + "Código HTTP obtenido: " + codigoObtenido
+                            + "\nRespuesta del servidor:\n"
+                            + SerenityRest.lastResponse().asString()
+            );
+        }
+
         Long id = actor.asksFor(LaRespuesta.idMatricula());
+
         actor.remember("idMatricula", id);
     }
 
     @Then("la matricula queda registrada con estado {string} y conserva el monto cotizado")
     public void verificarMatriculaRegistrada(String estado) {
 
-        Double montoCotizado = theActorInTheSpotlight()
-                .recall("montoCotizado");
+        Actor actor = theActorInTheSpotlight();
+
+        Double montoCotizado = actor.recall("montoCotizado");
 
         String estadoObtenido = SerenityRest.lastResponse()
                 .jsonPath()
@@ -136,20 +160,42 @@ public class MatriculaStepDefinitions {
                 .jsonPath()
                 .getString("monto");
 
+        if (montoCotizado == null) {
+            throw new AssertionError(
+                    "No se encontró el monto cotizado previamente."
+            );
+        }
+
+        if (estadoObtenido == null) {
+            throw new AssertionError(
+                    "La respuesta no contiene el estado de matrícula.\n"
+                            + SerenityRest.lastResponse().asString()
+            );
+        }
+
+        if (montoTexto == null) {
+            throw new AssertionError(
+                    "La respuesta no contiene el monto de matrícula.\n"
+                            + SerenityRest.lastResponse().asString()
+            );
+        }
+
         double montoObtenido = Double.parseDouble(
                 montoTexto.replace("F", "").replace("f", "")
         );
 
         if (!estadoObtenido.equals(estado)) {
             throw new AssertionError(
-                    "Estado incorrecto. Esperado: " + estado +
-                            ", obtenido: " + estadoObtenido);
+                    "Estado incorrecto. Esperado: " + estado
+                            + ", obtenido: " + estadoObtenido
+            );
         }
 
         if (Math.abs(montoObtenido - montoCotizado) > 0.001) {
             throw new AssertionError(
-                    "Monto incorrecto. Esperado: " + montoCotizado +
-                            ", obtenido: " + montoObtenido);
+                    "Monto incorrecto. Esperado: " + montoCotizado
+                            + ", obtenido: " + montoObtenido
+            );
         }
     }
 
@@ -157,6 +203,12 @@ public class MatriculaStepDefinitions {
     public void pagaLaMatricula(String metodo) {
 
         Long id = theActorInTheSpotlight().recall("idMatricula");
+
+        if (id == null) {
+            throw new AssertionError(
+                    "No se encontró el ID de matrícula para realizar el pago."
+            );
+        }
 
         theActorInTheSpotlight().attemptsTo(
                 PagarMatricula.conId(id, metodo)
@@ -171,7 +223,8 @@ public class MatriculaStepDefinitions {
         );
 
         theActorInTheSpotlight().should(
-                seeThatResponse("la matricula fue pagada",
+                seeThatResponse(
+                        "la matrícula fue pagada",
                         response -> response
                                 .body("estado", equalTo(estado))
                                 .body("fechaPago", notNullValue())
@@ -198,8 +251,16 @@ public class MatriculaStepDefinitions {
 
         Long idMatricula = actor.recall("idMatricula");
 
+        if (idMatricula == null) {
+            throw new AssertionError(
+                    "No se encontró el ID de matrícula almacenado."
+            );
+        }
+
         List<Map<String, Object>> pagos =
-                SerenityRest.lastResponse().jsonPath().getList("$");
+                SerenityRest.lastResponse()
+                        .jsonPath()
+                        .getList("$");
 
         boolean encontrado = pagos != null && pagos.stream().anyMatch(pago -> {
 
@@ -215,8 +276,11 @@ public class MatriculaStepDefinitions {
 
         if (!encontrado) {
             throw new AssertionError(
-                    "No se encontro el pago de la matricula con el metodo "
-                            + metodo + " y numero de operacion valido"
+                    "No se encontró el pago de la matrícula con el método "
+                            + metodo
+                            + " y un número de operación válido.\n"
+                            + "Respuesta del servidor:\n"
+                            + SerenityRest.lastResponse().asString()
             );
         }
     }

@@ -97,4 +97,9 @@ public class MatriculaController {
     public MatriculaResponse calificar(@PathVariable Long id, @Valid @RequestBody NotaRequest req) {
         return service.calificar(id, req);
     }
+    @Operation(summary = "Consultar el historial académico de un alumno")
+    @GetMapping("/historial/{codigoAlumno}")
+    public HistorialResponse historial(@PathVariable String codigoAlumno) {
+        return service.historial(codigoAlumno);
+    }
 }
